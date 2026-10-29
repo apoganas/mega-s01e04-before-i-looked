@@ -1,5 +1,6 @@
 import { readdirSync } from 'node:fs';
 import type { RigConfig } from './config.js';
+import { readNight } from './digest/types.js';
 import { lastBeat, type Beat } from './heartbeat.js';
 
 export type Status = {
@@ -7,7 +8,11 @@ export type Status = {
   installed: string;
   lastBeat: Beat | null;
   nights: string[];
+  digests: NightSummary[];
 };
+
+// Plan morning-digest 2c: what the board shows beside each night's digest link.
+export type NightSummary = { night: string; ok: number; retry: number; fail: number };
 
 // Nights on disk = runs/<YYYY-MM-DD>.jsonl, newest first.
 export function nightsOnDisk(runsDir: string): string[] {
@@ -22,11 +27,23 @@ export function nightsOnDisk(runsDir: string): string[] {
   }
 }
 
+function summarize(runsDir: string, night: string): NightSummary {
+  const rows = readNight(runsDir, night)?.rows ?? [];
+  return {
+    night,
+    ok: rows.filter((r) => r.lastStatus === 'ok').length,
+    retry: rows.filter((r) => r.lastStatus === 'retry').length,
+    fail: rows.filter((r) => r.lastStatus === 'fail').length,
+  };
+}
+
 export function readStatus(config: RigConfig): Status {
+  const nights = nightsOnDisk(config.runsDir);
   return {
     adapter: config.adapter,
     installed: config.installed,
     lastBeat: lastBeat(),
-    nights: nightsOnDisk(config.runsDir),
+    nights,
+    digests: nights.map((n) => summarize(config.runsDir, n)),
   };
 }

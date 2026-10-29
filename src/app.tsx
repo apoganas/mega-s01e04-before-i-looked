@@ -32,5 +32,13 @@ export function createApp(config: RigConfig = loadConfig()) {
     );
   });
 
+  // Plan morning-digest 2b: the same rows as JSON (ADR 0001 — page and JSON never disagree).
+  app.get('/api/digest/:night', (c) => {
+    const night = c.req.param('night');
+    const data = readNight(config.runsDir, night);
+    if (!data) return c.notFound();
+    return c.json({ night: data.night, lines: data.lines, badLines: data.badLines, rows: data.rows });
+  });
+
   return app;
 }
